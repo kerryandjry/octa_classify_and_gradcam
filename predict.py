@@ -7,7 +7,7 @@ from model import ResNet
 
 
 @torch.no_grad()
-def predict(image_path:str, weights:str):
+def predict(image_path: str, weights: str):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     assert os.path.exists(image_path), f"file: '{image_path}' dose not exist."
     img = Image.open(image_path).convert('RGB')

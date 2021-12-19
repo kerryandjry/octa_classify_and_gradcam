@@ -44,7 +44,7 @@ def run(opt):
                                 data_loader=val_loader,
                                 device=device)
 
-        print(val_acc)
+        print(f'val_acc = {val_acc}')
 
 
 def parse_opt():

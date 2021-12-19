@@ -7,7 +7,7 @@ class ResNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.layer = nn.Sequential(
-            models.mobilenet_v3_large()
+            models.resnet50()
         )
         self.out = nn.Linear(1000, 1)
 
