@@ -18,17 +18,19 @@ class MyData(Dataset):
 
     def __getitem__(self, item):
         image = self.path + '/' + self.data_set[item]
-        img = Image.open(image).convert('RGB')
+        # Image.open(image).show()
+        image = Image.open(image).convert('RGB')
+        plt.imshow(image)
         label = self.data_set[item][-5:-4]
 
         if self.transform is not None:
-            img = self.transform(img)
+            image = self.transform(image)
 
-        return img, np.float32(label)
+        return image, np.float32(label)
 
 
 if __name__ == '__main__':
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-    transform = transforms.Compose([transforms.Resize(400), transforms.ToTensor()])
-    # plt.imshow(data[2][0])
-    # plt.show()
+    transform = transforms.Compose([transforms.Resize(304), transforms.ToTensor()])
+    data = MyData(r'/home/lee/Work/data/DM_label (copy)', transform=transform)
+    print(data[2])

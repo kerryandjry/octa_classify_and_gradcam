@@ -19,6 +19,6 @@ class ResNet(nn.Module):
 
 if __name__ == '__main__':
     net = ResNet()
-    a = torch.rand(10, 3, 400, 400)
+    a = torch.randn(3, 3, 304, 304)
     print(net(a))
 

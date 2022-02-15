@@ -18,20 +18,24 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
     sample_num = 0
     data_loader = tqdm(data_loader)
     for step, data in enumerate(data_loader):
+
         images, labels = data
-        if random.random() > 0.5:
-            images = random_perspective(images)
+        # if random.random() > 0.5:
+        #     images = random_perspective(images)
         sample_num += images.shape[0]
 
         pred = model(images.to(device))
-        class_pred = (pred > 0.5) * 1.
-        int_labels = (np.array(labels))
-        print(class_pred, int_labels, class_pred == int_labels)
-        # accu_num += torch.eq(pred_classes, labels.to(device)).sum()
+        class_pred = torch.tensor(torch.sigmoid(pred))
+        class_pred[torch.where(class_pred >= 0.5)] = 1
+        class_pred[torch.where(class_pred < 0.5)] = 0
+        # print(f'class_pred = {class_pred}, labels = {labels}')
+
+        accu_num += torch.eq(class_pred, labels.to(device)).sum()
 
         loss = loss_function(pred, labels.to(device))
         loss.backward()
         accu_loss += loss.detach()
+
         data_loader.desc = "[train epoch {}] loss: {:.5f}".format(epoch, accu_loss.item() / (step + 1))
 
         if not torch.isfinite(loss):
@@ -42,8 +46,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
         optimizer.zero_grad()
 
     return accu_loss.item() / (step + 1), accu_num.item() / sample_num
+    # return  accu_loss.item() / (step + 1), pred_acc
 
 
+@torch.no_grad()
 def val_one_epoch(model, data_loader, device) -> float:
     val_num = torch.zeros(1).to(device)
     val_sum = 0
@@ -52,11 +58,15 @@ def val_one_epoch(model, data_loader, device) -> float:
     for step, data in enumerate(data_loader):
         images, labels = data
         val_sum += images.shape[0]
+
         pred = model(images.to(device))
-        class_pred = torch.tensor(pred > 0.5 * 1.)
+        class_pred = torch.tensor(torch.sigmoid(pred))
+        class_pred[torch.where(class_pred >= 0.5)] = 1
+        class_pred[torch.where(class_pred < 0.5)] = 0
+
         val_num += torch.eq(class_pred, labels.to(device)).sum()
 
-    return val_num / val_sum
+    return val_num.item() / val_sum
 
 
 def random_perspective(img, degrees=10, translate=.1, scale=.1, shear=10, perspective=0.0, border=(0, 0)):
