@@ -6,6 +6,11 @@ import cv2
 import numpy as np
 import torch
 from tqdm import tqdm
+from torchvision import transforms
+
+argument = transforms.Compose([transforms.RandomHorizontalFlip(p=0.7),
+                              transforms.RandomVerticalFlip(p=0.7),
+                              transforms.RandomRotation(degrees=(0, 180))])
 
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, float):
@@ -20,15 +25,16 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
     for step, data in enumerate(data_loader):
 
         images, labels = data
-        # if random.random() > 0.5:
-        #     images = random_perspective(images)
+
+        if random.random() > 0.7:
+            images = argument(images)
+
         sample_num += images.shape[0]
 
         pred = model(images.to(device))
         class_pred = torch.tensor(torch.sigmoid(pred))
-        class_pred[torch.where(class_pred >= 0.5)] = 1
-        class_pred[torch.where(class_pred < 0.5)] = 0
-        # print(f'class_pred = {class_pred}, labels = {labels}')
+        class_pred[torch.where(class_pred >= 0.16)] = 1
+        class_pred[torch.where(class_pred < 0.16)] = 0
 
         accu_num += torch.eq(class_pred, labels.to(device)).sum()
 
@@ -46,7 +52,6 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
         optimizer.zero_grad()
 
     return accu_loss.item() / (step + 1), accu_num.item() / sample_num
-    # return  accu_loss.item() / (step + 1), pred_acc
 
 
 @torch.no_grad()
@@ -61,8 +66,8 @@ def val_one_epoch(model, data_loader, device) -> float:
 
         pred = model(images.to(device))
         class_pred = torch.tensor(torch.sigmoid(pred))
-        class_pred[torch.where(class_pred >= 0.5)] = 1
-        class_pred[torch.where(class_pred < 0.5)] = 0
+        class_pred[torch.where(class_pred >= 0.2)] = 1
+        class_pred[torch.where(class_pred < 0.2)] = 0
 
         val_num += torch.eq(class_pred, labels.to(device)).sum()
 
