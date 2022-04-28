@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
 import model
-import swim_transformer_model
 from dataset import MyData
 from utils import train_one_epoch, val_one_epoch
 
@@ -21,8 +20,8 @@ def run(weights, val, data_path, epochs):
     train_set = MyData(data_path, val, transform=transform)
     train_loader = DataLoader(train_set, batch_size=13, shuffle=True)
     val_set = MyData(data_path, val, transform=transform, is_train=False)
-    val_loader = DataLoader(val_set, batch_size=12, shuffle=True)
-    net = model.resnet34(num_classes=1).to(device)
+    val_loader = DataLoader(val_set, batch_size=13, shuffle=True)
+    net = model.mobilenet_v3_small(num_classes=1).to(device)
     if os.path.exists(weights):
         net.load_state_dict(torch.load(weights))
         print('load weights success')
@@ -31,6 +30,7 @@ def run(weights, val, data_path, epochs):
     temp_acc = 0
 
     for epoch in range(epochs):
+
         train_loss, train_acc = train_one_epoch(model=net,
                                                 optimizer=opt,
                                                 data_loader=train_loader,
@@ -43,9 +43,9 @@ def run(weights, val, data_path, epochs):
 
         print(f'epoch {val}-{epoch+1}, train_acc = {train_acc}, val_acc = {val_acc}')
 
-        acc = train_acc * 0.4 + val_acc * 0.6
+        acc = train_acc + val_acc * 1.2
         if temp_acc < acc:
-            torch.save(net.state_dict(), f"./weights/res34_{val}.pt")
+            torch.save(net.state_dict(), f"./weights/mobile_{val}_100epoch.pt")
             print(f'best_acc = {temp_acc}, all_acc = {acc}, save model!')
             temp_acc = acc
         else:
@@ -55,14 +55,17 @@ def run(weights, val, data_path, epochs):
 def fold(opt):
     weights, data_path, epochs = opt.weights, opt.data_path, opt.epochs
     for i in range(4):
+        import time
+        start = time.time()
         run(weights, i+1, data_path, epochs)
-
+        end = time.time()
+        print(f"==============time = {end - start}===============")
 
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default=r'')
-    parser.add_argument('--data_path', type=str, default=r'E:\Data_for_working\DM_label')
-    parser.add_argument('--epochs', type=int, default=50)
+    parser.add_argument('--data_path', type=str, default=r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label')
+    parser.add_argument('--epochs', type=int, default=100)
 
     opt = parser.parse_args()
     return opt

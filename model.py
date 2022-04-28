@@ -1,24 +1,9 @@
 from typing import Callable, List, Optional
-
+from collections import OrderedDict
 import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 from functools import partial
-from torchvision import models
-
-
-class Alexnet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.layer = nn.Sequential(
-            models.resnet34()
-        )
-        self.out = nn.Linear(1000, 1)
-
-    def forward(self, x):
-        out = self.out(self.layer(x))
-        out = torch.squeeze(out, dim=1)
-        return out
 
 
 class BasicBlock(nn.Module):
@@ -177,45 +162,10 @@ class ResNet(nn.Module):
 def resnet34(num_classes=1000, include_top=True):
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes=num_classes, include_top=include_top)
 
-
-def resnet50(num_classes=1000, include_top=True):
-    return ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes, include_top=include_top)
-
-
-def resnet101(num_classes=1000, include_top=True):
-    return ResNet(Bottleneck, [3, 4, 23, 3], num_classes=num_classes, include_top=include_top)
-
-
-def resnext50_32x4d(num_classes=1000, include_top=True):
-    groups = 32
-    width_per_group = 4
-    return ResNet(Bottleneck, [3, 4, 6, 3],
-                  num_classes=num_classes,
-                  include_top=include_top,
-                  groups=groups,
-                  width_per_group=width_per_group)
-
-
-def resnext101_32x8d(num_classes=1000, include_top=True):
-    groups = 32
-    width_per_group = 8
-    return ResNet(Bottleneck, [3, 4, 23, 3],
-                  num_classes=num_classes,
-                  include_top=include_top,
-                  groups=groups,
-                  width_per_group=width_per_group)
-
 def _make_divisible(ch, divisor=8, min_ch=None):
-    """
-    This function is taken from the original tf repo.
-    It ensures that all layers have a channel number that is divisible by 8
-    It can be seen here:
-    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
-    """
     if min_ch is None:
         min_ch = divisor
     new_ch = max(min_ch, int(ch + divisor / 2) // divisor * divisor)
-    # Make sure that round down does not go down by more than 10%.
     if new_ch < 0.9 * ch:
         new_ch += divisor
     return new_ch
@@ -279,16 +229,13 @@ class MobileNetV2(nn.Module):
         features = []
         # conv1 layer
         features.append(ConvBNReLU(3, input_channel, stride=2))
-        # building inverted residual residual blockes
         for t, c, n, s in inverted_residual_setting:
             output_channel = _make_divisible(c * alpha, round_nearest)
             for i in range(n):
                 stride = s if i == 0 else 1
                 features.append(block(input_channel, output_channel, stride, expand_ratio=t))
                 input_channel = output_channel
-        # building last several layers
         features.append(ConvBNReLU(input_channel, last_channel, 1))
-        # combine feature layers
         self.features = nn.Sequential(*features)
 
         # building classifier
@@ -319,12 +266,6 @@ class MobileNetV2(nn.Module):
         return torch.squeeze(x, dim=1)
 
 def _make_divisible(ch, divisor=8, min_ch=None):
-    """
-    This function is taken from the original tf repo.
-    It ensures that all layers have a channel number that is divisible by 8
-    It can be seen here:
-    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
-    """
     if min_ch is None:
         min_ch = divisor
     new_ch = max(min_ch, int(ch + divisor / 2) // divisor * divisor)
@@ -332,7 +273,6 @@ def _make_divisible(ch, divisor=8, min_ch=None):
     if new_ch < 0.9 * ch:
         new_ch += divisor
     return new_ch
-
 
 class ConvBNActivation(nn.Sequential):
     def __init__(self,
@@ -526,63 +466,8 @@ class MobileNetV3(nn.Module):
         return torch.squeeze(self._forward_impl(x), dim=1)
 
 
-def mobilenet_v3_large(num_classes: int = 1000,
-                       reduced_tail: bool = False) -> MobileNetV3:
-    """
-    Constructs a large MobileNetV3 architecture from
-    "Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>.
-    weights_link:
-    https://download.pytorch.org/models/mobilenet_v3_large-8738ca79.pth
-    Args:
-        num_classes (int): number of classes
-        reduced_tail (bool): If True, reduces the channel counts of all feature layers
-            between C4 and C5 by 2. It is used to reduce the channel redundancy in the
-            backbone for Detection and Segmentation.
-    """
-    width_multi = 1.0
-    bneck_conf = partial(InvertedResidualConfig, width_multi=width_multi)
-    adjust_channels = partial(InvertedResidualConfig.adjust_channels, width_multi=width_multi)
-
-    reduce_divider = 2 if reduced_tail else 1
-
-    inverted_residual_setting = [
-        # input_c, kernel, expanded_c, out_c, use_se, activation, stride
-        bneck_conf(16, 3, 16, 16, False, "RE", 1),
-        bneck_conf(16, 3, 64, 24, False, "RE", 2),  # C1
-        bneck_conf(24, 3, 72, 24, False, "RE", 1),
-        bneck_conf(24, 5, 72, 40, True, "RE", 2),  # C2
-        bneck_conf(40, 5, 120, 40, True, "RE", 1),
-        bneck_conf(40, 5, 120, 40, True, "RE", 1),
-        bneck_conf(40, 3, 240, 80, False, "HS", 2),  # C3
-        bneck_conf(80, 3, 200, 80, False, "HS", 1),
-        bneck_conf(80, 3, 184, 80, False, "HS", 1),
-        bneck_conf(80, 3, 184, 80, False, "HS", 1),
-        bneck_conf(80, 3, 480, 112, True, "HS", 1),
-        bneck_conf(112, 3, 672, 112, True, "HS", 1),
-        bneck_conf(112, 5, 672, 160 // reduce_divider, True, "HS", 2),  # C4
-        bneck_conf(160 // reduce_divider, 5, 960 // reduce_divider, 160 // reduce_divider, True, "HS", 1),
-        bneck_conf(160 // reduce_divider, 5, 960 // reduce_divider, 160 // reduce_divider, True, "HS", 1),
-    ]
-    last_channel = adjust_channels(1280 // reduce_divider)  # C5
-
-    return MobileNetV3(inverted_residual_setting=inverted_residual_setting,
-                       last_channel=last_channel,
-                       num_classes=num_classes)
-
-
 def mobilenet_v3_small(num_classes: int = 1,
                        reduced_tail: bool = False) -> MobileNetV3:
-    """
-    Constructs a large MobileNetV3 architecture from
-    "Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>.
-    weights_link:
-    https://download.pytorch.org/models/mobilenet_v3_small-047dcff4.pth
-    Args:
-        num_classes (int): number of classes
-        reduced_tail (bool): If True, reduces the channel counts of all feature layers
-            between C4 and C5 by 2. It is used to reduce the channel redundancy in the
-            backbone for Detection and Segmentation.
-    """
     width_multi = 1.0
     bneck_conf = partial(InvertedResidualConfig, width_multi=width_multi)
     adjust_channels = partial(InvertedResidualConfig.adjust_channels, width_multi=width_multi)
@@ -608,6 +493,305 @@ def mobilenet_v3_small(num_classes: int = 1,
     return MobileNetV3(inverted_residual_setting=inverted_residual_setting,
                        last_channel=last_channel,
                        num_classes=num_classes)
+
+
+def drop_path(x, drop_prob: float = 0., training: bool = False):
+    if drop_prob == 0. or not training:
+        return x
+    keep_prob = 1 - drop_prob
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
+    random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
+    random_tensor.floor_()  # binarize
+    output = x.div(keep_prob) * random_tensor
+    return output
+
+
+class DropPath(nn.Module):
+    def __init__(self, drop_prob=None):
+        super(DropPath, self).__init__()
+        self.drop_prob = drop_prob
+
+    def forward(self, x):
+        return drop_path(x, self.drop_prob, self.training)
+
+
+class ConvBNAct(nn.Module):
+    def __init__(self,
+                 in_planes: int,
+                 out_planes: int,
+                 kernel_size: int = 3,
+                 stride: int = 1,
+                 groups: int = 1,
+                 norm_layer: Optional[Callable[..., nn.Module]] = None,
+                 activation_layer: Optional[Callable[..., nn.Module]] = None):
+        super(ConvBNAct, self).__init__()
+
+        padding = (kernel_size - 1) // 2
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if activation_layer is None:
+            activation_layer = nn.SiLU  # alias Swish  (torch>=1.7)
+
+        self.conv = nn.Conv2d(in_channels=in_planes,
+                              out_channels=out_planes,
+                              kernel_size=kernel_size,
+                              stride=stride,
+                              padding=padding,
+                              groups=groups,
+                              bias=False)
+
+        self.bn = norm_layer(out_planes)
+        self.act = activation_layer()
+
+    def forward(self, x):
+        result = self.conv(x)
+        result = self.bn(result)
+        result = self.act(result)
+
+        return result
+
+
+class SqueezeExcite(nn.Module):
+    def __init__(self,
+                 input_c: int,   # block input channel
+                 expand_c: int,  # block expand channel
+                 se_ratio: float = 0.25):
+        super(SqueezeExcite, self).__init__()
+        squeeze_c = int(input_c * se_ratio)
+        self.conv_reduce = nn.Conv2d(expand_c, squeeze_c, 1)
+        self.act1 = nn.SiLU()  # alias Swish
+        self.conv_expand = nn.Conv2d(squeeze_c, expand_c, 1)
+        self.act2 = nn.Sigmoid()
+
+    def forward(self, x: Tensor) -> Tensor:
+        scale = x.mean((2, 3), keepdim=True)
+        scale = self.conv_reduce(scale)
+        scale = self.act1(scale)
+        scale = self.conv_expand(scale)
+        scale = self.act2(scale)
+        return scale * x
+
+
+class MBConv(nn.Module):
+    def __init__(self,
+                 kernel_size: int,
+                 input_c: int,
+                 out_c: int,
+                 expand_ratio: int,
+                 stride: int,
+                 se_ratio: float,
+                 drop_rate: float,
+                 norm_layer: Callable[..., nn.Module]):
+        super(MBConv, self).__init__()
+
+        if stride not in [1, 2]:
+            raise ValueError("illegal stride value.")
+
+        self.has_shortcut = (stride == 1 and input_c == out_c)
+
+        activation_layer = nn.SiLU  # alias Swish
+        expanded_c = input_c * expand_ratio
+
+        assert expand_ratio != 1
+        self.expand_conv = ConvBNAct(input_c,
+                                     expanded_c,
+                                     kernel_size=1,
+                                     norm_layer=norm_layer,
+                                     activation_layer=activation_layer)
+
+        self.dwconv = ConvBNAct(expanded_c,
+                                expanded_c,
+                                kernel_size=kernel_size,
+                                stride=stride,
+                                groups=expanded_c,
+                                norm_layer=norm_layer,
+                                activation_layer=activation_layer)
+
+        self.se = SqueezeExcite(input_c, expanded_c, se_ratio) if se_ratio > 0 else nn.Identity()
+
+        self.project_conv = ConvBNAct(expanded_c,
+                                      out_planes=out_c,
+                                      kernel_size=1,
+                                      norm_layer=norm_layer,
+                                      activation_layer=nn.Identity)
+
+        self.out_channels = out_c
+
+        self.drop_rate = drop_rate
+        if self.has_shortcut and drop_rate > 0:
+            self.dropout = DropPath(drop_rate)
+
+    def forward(self, x: Tensor) -> Tensor:
+        result = self.expand_conv(x)
+        result = self.dwconv(result)
+        result = self.se(result)
+        result = self.project_conv(result)
+
+        if self.has_shortcut:
+            if self.drop_rate > 0:
+                result = self.dropout(result)
+            result += x
+
+        return result
+
+
+class FusedMBConv(nn.Module):
+    def __init__(self,
+                 kernel_size: int,
+                 input_c: int,
+                 out_c: int,
+                 expand_ratio: int,
+                 stride: int,
+                 se_ratio: float,
+                 drop_rate: float,
+                 norm_layer: Callable[..., nn.Module]):
+        super(FusedMBConv, self).__init__()
+
+        assert stride in [1, 2]
+        assert se_ratio == 0
+
+        self.has_shortcut = stride == 1 and input_c == out_c
+        self.drop_rate = drop_rate
+
+        self.has_expansion = expand_ratio != 1
+
+        activation_layer = nn.SiLU  # alias Swish
+        expanded_c = input_c * expand_ratio
+
+        if self.has_expansion:
+            # Expansion convolution
+            self.expand_conv = ConvBNAct(input_c,
+                                         expanded_c,
+                                         kernel_size=kernel_size,
+                                         stride=stride,
+                                         norm_layer=norm_layer,
+                                         activation_layer=activation_layer)
+
+            self.project_conv = ConvBNAct(expanded_c,
+                                          out_c,
+                                          kernel_size=1,
+                                          norm_layer=norm_layer,
+                                          activation_layer=nn.Identity)
+        else:
+            self.project_conv = ConvBNAct(input_c,
+                                          out_c,
+                                          kernel_size=kernel_size,
+                                          stride=stride,
+                                          norm_layer=norm_layer,
+                                          activation_layer=activation_layer)
+
+        self.out_channels = out_c
+
+        self.drop_rate = drop_rate
+        if self.has_shortcut and drop_rate > 0:
+            self.dropout = DropPath(drop_rate)
+
+    def forward(self, x: Tensor) -> Tensor:
+        if self.has_expansion:
+            result = self.expand_conv(x)
+            result = self.project_conv(result)
+        else:
+            result = self.project_conv(x)
+
+        if self.has_shortcut:
+            if self.drop_rate > 0:
+                result = self.dropout(result)
+
+            result += x
+
+        return result
+
+
+class EfficientNetV2(nn.Module):
+    def __init__(self,
+                 model_cnf: list,
+                 num_classes: int = 1,
+                 num_features: int = 1280,
+                 dropout_rate: float = 0.2,
+                 drop_connect_rate: float = 0.2):
+        super(EfficientNetV2, self).__init__()
+
+        for cnf in model_cnf:
+            assert len(cnf) == 8
+
+        norm_layer = partial(nn.BatchNorm2d, eps=1e-3, momentum=0.1)
+
+        stem_filter_num = model_cnf[0][4]
+
+        self.stem = ConvBNAct(3,
+                              stem_filter_num,
+                              kernel_size=3,
+                              stride=2,
+                              norm_layer=norm_layer)
+
+        total_blocks = sum([i[0] for i in model_cnf])
+        block_id = 0
+        blocks = []
+        for cnf in model_cnf:
+            repeats = cnf[0]
+            op = FusedMBConv if cnf[-2] == 0 else MBConv
+            for i in range(repeats):
+                blocks.append(op(kernel_size=cnf[1],
+                                 input_c=cnf[4] if i == 0 else cnf[5],
+                                 out_c=cnf[5],
+                                 expand_ratio=cnf[3],
+                                 stride=cnf[2] if i == 0 else 1,
+                                 se_ratio=cnf[-1],
+                                 drop_rate=drop_connect_rate * block_id / total_blocks,
+                                 norm_layer=norm_layer))
+                block_id += 1
+        self.blocks = nn.Sequential(*blocks)
+
+        head_input_c = model_cnf[-1][-3]
+        head = OrderedDict()
+
+        head.update({"project_conv": ConvBNAct(head_input_c,
+                                               num_features,
+                                               kernel_size=1,
+                                               norm_layer=norm_layer)})  # 激活函数默认是SiLU
+
+        head.update({"avgpool": nn.AdaptiveAvgPool2d(1)})
+        head.update({"flatten": nn.Flatten()})
+
+        if dropout_rate > 0:
+            head.update({"dropout": nn.Dropout(p=dropout_rate, inplace=True)})
+        head.update({"classifier": nn.Linear(num_features, num_classes)})
+
+        self.head = nn.Sequential(head)
+
+        # initial weights
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out")
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.zeros_(m.bias)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.stem(x)
+        x = self.blocks(x)
+        x = self.head(x)
+
+        return torch.squeeze(x, dim=1)
+
+
+def efficientnetv2_s(num_classes: int = 1):
+    model_config = [[2, 3, 1, 1, 24, 24, 0, 0],
+                    [4, 3, 2, 4, 24, 48, 0, 0],
+                    [4, 3, 2, 4, 48, 64, 0, 0],
+                    [6, 3, 2, 4, 64, 128, 1, 0.25],
+                    [9, 3, 1, 6, 128, 160, 1, 0.25],
+                    [15, 3, 2, 6, 160, 256, 1, 0.25]]
+
+    model = EfficientNetV2(model_cnf=model_config,
+                           num_classes=num_classes,
+                           dropout_rate=0.2)
+    return model
 
 
 if __name__ == '__main__':

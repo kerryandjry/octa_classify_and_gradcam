@@ -4,7 +4,6 @@ import sys
 
 import cv2
 import numpy as np
-import torch
 from tqdm import tqdm
 from torchvision import transforms
 
@@ -50,12 +49,11 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
 
         optimizer.step()
         optimizer.zero_grad()
-
     return accu_loss.item() / (step + 1), accu_num.item() / sample_num
 
 
-@torch.no_grad()
 def val_one_epoch(model, data_loader, device) -> float:
+    model.eval()
     val_num = torch.zeros(1).to(device)
     val_sum = 0
 
@@ -70,7 +68,6 @@ def val_one_epoch(model, data_loader, device) -> float:
         class_pred[torch.where(class_pred < 0.2)] = 0
 
         val_num += torch.eq(class_pred, labels.to(device)).sum()
-
     return val_num.item() / val_sum
 
 
@@ -107,3 +104,58 @@ def random_perspective(img, degrees=10, translate=.1, scale=.1, shear=10, perspe
             img = cv2.warpAffine(img, M[:2], dsize=(width, height), borderValue=(114, 114, 114))
 
     return img
+
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
+
+
+class FocalLoss(nn.Module):
+
+    def __init__(self, class_num, alpha=None, gamma=2, size_average=True):
+        super(FocalLoss, self).__init__()
+        if alpha is None:
+            self.alpha = Variable(torch.ones(class_num, 1))
+        else:
+            if isinstance(alpha, Variable):
+                self.alpha = alpha
+            else:
+                self.alpha = Variable(alpha)
+        self.gamma = gamma
+        self.class_num = class_num
+        self.size_average = size_average
+
+    def forward(self, inputs, targets):
+        N = inputs.size(0)
+        C = inputs.size(1)
+        P = F.softmax(inputs)
+
+        class_mask = inputs.data.new(N, C).fill_(0)
+        class_mask = Variable(class_mask)
+        ids = targets.view(-1, 1)
+        class_mask.scatter_(1, ids.data, 1.)
+        #print(class_mask)
+
+
+        if inputs.is_cuda and not self.alpha.is_cuda:
+            self.alpha = self.alpha.cuda()
+        alpha = self.alpha[ids.data.view(-1)]
+
+        probs = (P*class_mask).sum(1).view(-1,1)
+
+        log_p = probs.log()
+        #print('probs size= {}'.format(probs.size()))
+        #print(probs)
+
+        batch_loss = -alpha*(torch.pow((1-probs), self.gamma))*log_p
+        #print('-----bacth_loss------')
+        #print(batch_loss)
+
+
+        if self.size_average:
+            loss = batch_loss.mean()
+        else:
+            loss = batch_loss.sum()
+        return loss
