@@ -15,9 +15,9 @@ def predict(image_path: str, weights: str):
 
     transform = transforms.Compose([transforms.Resize(304), transforms.ToTensor(), transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
     test_data = MyData(image_path, val=5, is_train=False, transform=transform)
-    test_loader = DataLoader(test_data, batch_size=24, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=87, shuffle=False)
 
-    model = efficientnetv2_s(num_classes=1).to(device)
+    model = resnet34(num_classes=1).to(device)
     if os.path.exists(weights):
         model.load_state_dict(torch.load(weights))
         print('load weights success')
@@ -31,8 +31,8 @@ def predict(image_path: str, weights: str):
         sample_num += images.shape[0]
         pred = model(images.to(device))
         class_pred = torch.tensor(torch.sigmoid(pred))
-        class_pred[torch.where(class_pred >= 0.2)] = 1
-        class_pred[torch.where(class_pred < 0.2)] = 0
+        class_pred[torch.where(class_pred >= 0.37)] = 1
+        class_pred[torch.where(class_pred < 0.37)] = 0
         print(class_pred, "\n", labels)
         accu_num += torch.eq(class_pred, labels.to(device)).sum()
     return accu_num.item() / sample_num
@@ -40,4 +40,4 @@ def predict(image_path: str, weights: str):
 
 if __name__ == '__main__':
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-    print(predict(r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label', r'weights/effi_s_3_100epoch.pt'))
+    print(predict(r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label', r'weights/res_3_100epoch.pt'))

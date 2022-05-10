@@ -32,8 +32,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
 
         pred = model(images.to(device))
         class_pred = torch.tensor(torch.sigmoid(pred))
-        class_pred[torch.where(class_pred >= 0.16)] = 1
-        class_pred[torch.where(class_pred < 0.16)] = 0
+        class_pred[torch.where(class_pred >= 0.37)] = 1
+        class_pred[torch.where(class_pred < 0.37)] = 0
 
         accu_num += torch.eq(class_pred, labels.to(device)).sum()
 
@@ -64,8 +64,8 @@ def val_one_epoch(model, data_loader, device) -> float:
 
         pred = model(images.to(device))
         class_pred = torch.tensor(torch.sigmoid(pred))
-        class_pred[torch.where(class_pred >= 0.2)] = 1
-        class_pred[torch.where(class_pred < 0.2)] = 0
+        class_pred[torch.where(class_pred >= 0.37)] = 1
+        class_pred[torch.where(class_pred < 0.37)] = 0
 
         val_num += torch.eq(class_pred, labels.to(device)).sum()
     return val_num.item() / val_sum

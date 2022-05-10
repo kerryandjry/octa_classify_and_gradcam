@@ -95,7 +95,7 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.include_top = include_top
         self.in_channel = 304
-
+        self.future = torch.tensor
         self.groups = groups
         self.width_per_group = width_per_group
 
@@ -148,6 +148,7 @@ class ResNet(nn.Module):
 
         x = self.layer1(x)
         x = self.layer2(x)
+        self.future = x.detach()
         x = self.layer3(x)
         x = self.layer4(x)
 
@@ -211,6 +212,7 @@ class InvertedResidual(nn.Module):
 class MobileNetV2(nn.Module):
     def __init__(self, num_classes=1000, alpha=1.0, round_nearest=8):
         super(MobileNetV2, self).__init__()
+        self.future = torch.tensor
         block = InvertedResidual
         input_channel = _make_divisible(32 * alpha, round_nearest)
         last_channel = _make_divisible(1280 * alpha, round_nearest)
@@ -260,6 +262,7 @@ class MobileNetV2(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
+        self.future = x.Liner(128)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
@@ -273,6 +276,7 @@ def _make_divisible(ch, divisor=8, min_ch=None):
     if new_ch < 0.9 * ch:
         new_ch += divisor
     return new_ch
+
 
 class ConvBNActivation(nn.Sequential):
     def __init__(self,
@@ -457,6 +461,7 @@ class MobileNetV3(nn.Module):
     def _forward_impl(self, x: Tensor) -> Tensor:
         x = self.features(x)
         x = self.avgpool(x)
+        self.future = x.detach()
         x = torch.flatten(x, 1)
         x = self.classifier(x)
 
@@ -710,7 +715,7 @@ class EfficientNetV2(nn.Module):
                  dropout_rate: float = 0.2,
                  drop_connect_rate: float = 0.2):
         super(EfficientNetV2, self).__init__()
-
+        self.future = torch.tensor
         for cnf in model_cnf:
             assert len(cnf) == 8
 
@@ -748,7 +753,7 @@ class EfficientNetV2(nn.Module):
         head.update({"project_conv": ConvBNAct(head_input_c,
                                                num_features,
                                                kernel_size=1,
-                                               norm_layer=norm_layer)})  # 激活函数默认是SiLU
+                                               norm_layer=norm_layer)})
 
         head.update({"avgpool": nn.AdaptiveAvgPool2d(1)})
         head.update({"flatten": nn.Flatten()})
@@ -775,6 +780,7 @@ class EfficientNetV2(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x = self.stem(x)
         x = self.blocks(x)
+        self.future = x.detach()
         x = self.head(x)
 
         return torch.squeeze(x, dim=1)
@@ -795,6 +801,18 @@ def efficientnetv2_s(num_classes: int = 1):
 
 
 if __name__ == '__main__':
+    from PIL import Image
+    from torchvision import transforms
+    transform = transforms.Compose(
+        [transforms.Resize(304), transforms.ToTensor(), transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
+    img = Image.open(r'DM_label/2/_419193J_419193J__1256_HD Angio Retina_OS_2018-06-14_09-50-24_M_1957-10-28_Enface-400x400-Superficial_0.png').convert('RGB')
+    img = transform(img)
+    img = img.unsqueeze(0)
     net = resnet34(num_classes=1)
-    a = torch.randn(3, 3, 304, 304)
-    print(net(a))
+    net2 = mobilenet_v3_small(num_classes=1)
+    net3 = efficientnetv2_s(num_classes=1)
+    print(img, img.shape)
+    print(net(img), type(net.future))
+    print(net2(img), type(net2.future))
+    print(net3(img), type(net3.future))
+

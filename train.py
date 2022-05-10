@@ -18,15 +18,18 @@ transform = transforms.Compose(
 def run(weights, val, data_path, epochs):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     train_set = MyData(data_path, val, transform=transform)
-    train_loader = DataLoader(train_set, batch_size=13, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=16, shuffle=True)  # 64 for mobilenet
     val_set = MyData(data_path, val, transform=transform, is_train=False)
-    val_loader = DataLoader(val_set, batch_size=13, shuffle=True)
-    net = model.mobilenet_v3_small(num_classes=1).to(device)
+    val_loader = DataLoader(val_set, batch_size=16, shuffle=True)  # 64 for mobilenet
+    net = model.efficientnetv2_s(num_classes=1).to(device)
     if os.path.exists(weights):
         net.load_state_dict(torch.load(weights))
         print('load weights success')
 
-    opt = optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
+    if isinstance(net, model.ResNet):
+        opt = optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=0.05)
+    else:
+        opt = optim.Adam(net.parameters(), lr=0.005)
     temp_acc = 0
 
     for epoch in range(epochs):
@@ -41,11 +44,11 @@ def run(weights, val, data_path, epochs):
                                 data_loader=val_loader,
                                 device=device)
 
-        print(f'epoch {val}-{epoch+1}, train_acc = {train_acc}, val_acc = {val_acc}')
+        print(f'epoch {val}-{epoch + 1}, train_acc = {train_acc}, val_acc = {val_acc}')
 
-        acc = train_acc + val_acc * 1.2
+        acc = train_acc + val_acc * 1.3
         if temp_acc < acc:
-            torch.save(net.state_dict(), f"./weights/mobile_{val}_100epoch.pt")
+            torch.save(net.state_dict(), f"./mobile_{val}_100epoch.pt")
             print(f'best_acc = {temp_acc}, all_acc = {acc}, save model!')
             temp_acc = acc
         else:
@@ -57,9 +60,10 @@ def fold(opt):
     for i in range(4):
         import time
         start = time.time()
-        run(weights, i+1, data_path, epochs)
+        run(weights, i + 1, data_path, epochs)
         end = time.time()
         print(f"==============time = {end - start}===============")
+
 
 def parse_opt():
     parser = argparse.ArgumentParser()
