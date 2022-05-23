@@ -163,6 +163,7 @@ class ResNet(nn.Module):
 def resnet34(num_classes=1000, include_top=True):
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes=num_classes, include_top=include_top)
 
+
 def _make_divisible(ch, divisor=8, min_ch=None):
     if min_ch is None:
         min_ch = divisor
@@ -267,6 +268,7 @@ class MobileNetV2(nn.Module):
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return torch.squeeze(x, dim=1)
+
 
 def _make_divisible(ch, divisor=8, min_ch=None):
     if min_ch is None:
@@ -558,7 +560,7 @@ class ConvBNAct(nn.Module):
 
 class SqueezeExcite(nn.Module):
     def __init__(self,
-                 input_c: int,   # block input channel
+                 input_c: int,  # block input channel
                  expand_c: int,  # block expand channel
                  se_ratio: float = 0.25):
         super(SqueezeExcite, self).__init__()
@@ -803,9 +805,12 @@ def efficientnetv2_s(num_classes: int = 1):
 if __name__ == '__main__':
     from PIL import Image
     from torchvision import transforms
+
     transform = transforms.Compose(
         [transforms.Resize(304), transforms.ToTensor(), transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
-    img = Image.open(r'DM_label/2/_419193J_419193J__1256_HD Angio Retina_OS_2018-06-14_09-50-24_M_1957-10-28_Enface-400x400-Superficial_0.png').convert('RGB')
+    img = Image.open(
+        r'DM_label/2/_419193J_419193J__1256_HD Angio Retina_OS_2018-06-14_09-50-24_M_1957-10-28_Enface-400x400-Superficial_0.png').convert(
+        'RGB')
     img = transform(img)
     img = img.unsqueeze(0)
     net = resnet34(num_classes=1)
@@ -815,4 +820,3 @@ if __name__ == '__main__':
     print(net(img), type(net.future))
     print(net2(img), type(net2.future))
     print(net3(img), type(net3.future))
-

@@ -76,7 +76,7 @@ class GradCAM:
     def get_loss(output, target_category):
         loss = 0
         for i in range(len(target_category)):
-            loss = loss + output[i, target_category[i]]
+            loss = loss + output[0]
         return loss
 
     def get_cam_image(self, activations, grads):
@@ -140,6 +140,7 @@ class GradCAM:
         if target_category is None:
             target_category = np.argmax(output.cpu().data.numpy(), axis=-1)
             print(f"category id: {target_category}")
+            target_category = [target_category] * input_tensor.size(0)
         else:
             assert (len(target_category) == input_tensor.size(0))
 
