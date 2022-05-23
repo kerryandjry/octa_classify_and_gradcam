@@ -17,7 +17,7 @@ def predict(image_path: str, weights: str):
     test_data = MyData(image_path, val=5, is_train=False, transform=transform)
     test_loader = DataLoader(test_data, batch_size=87, shuffle=False)
 
-    model = resnet34(num_classes=1).to(device)
+    model = efficientnetv2_s(num_classes=1).to(device)
     if os.path.exists(weights):
         model.load_state_dict(torch.load(weights))
         print('load weights success')
@@ -40,4 +40,4 @@ def predict(image_path: str, weights: str):
 
 if __name__ == '__main__':
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-    print(predict(r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label', r'weights/res_3_100epoch.pt'))
+    print(predict(r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label', r'weights/eff_4_100epoch.pt'))

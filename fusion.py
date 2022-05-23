@@ -47,13 +47,18 @@ def predict(image_path: str, weights1: str, weights2: str, weights3: str):
         class_pred3[torch.where(class_pred3 < 0.37)] = 0
         class_pred = class_pred1 + class_pred2 + class_pred3
         class_pred = torch.where(class_pred > 1, 1., 0.)
-        # print(class_pred)
         accu_num1 += torch.eq(class_pred, labels.to(device)).sum()
         print(accu_num1.item() / sample_num)
 
+        # class_total = class_pred1 + class_pred2 + class_pred3
+        # class_total[torch.where(class_total >= 0.37)] = 1
+        # class_total[torch.where(class_total < 0.37)] = 0
+        # accu_num1 += torch.eq(class_total, labels.to(device)).sum()
+        # print(accu_num1.item() / sample_num)
+
 
 if __name__ == '__main__':
-    test = 4
+    test = 2
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
     predict(r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label', rf'weights/eff_{test}_100epoch.pt', rf'weights/res_{test}_100epoch.pt', rf'weights/mobile_{test}_100epoch.pt')
     for _ in range(100):
