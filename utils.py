@@ -8,9 +8,9 @@ from tqdm import tqdm
 from torchvision import transforms
 
 argument = transforms.Compose([transforms.RandomHorizontalFlip(p=0.7),
-                              transforms.RandomVerticalFlip(p=0.7),
-                              transforms.RandomRotation(degrees=(0, 180))])
+                               transforms.RandomVerticalFlip(p=0.7)])
 
+argument_rotation = transforms.Compose([transforms.RandomRotation(degrees=(0, 180))])
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, float):
     model.train()
@@ -25,18 +25,22 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
 
         images, labels = data
 
+        images = argument(images)
+
         if random.random() > 0.7:
-            images = argument(images)
+            images = argument_rotation(images)
 
         sample_num += images.shape[0]
 
         pred = model(images.to(device))
         class_pred = torch.tensor(torch.sigmoid(pred))
-        class_pred[torch.where(class_pred >= 0.37)] = 1
-        class_pred[torch.where(class_pred < 0.37)] = 0
+        class_pred[torch.where(class_pred >= 0.5)] = 1
+        class_pred[torch.where(class_pred < 0.5)] = 0
+        class_pred = torch.squeeze(class_pred, 1)
 
         accu_num += torch.eq(class_pred, labels.to(device)).sum()
 
+        pred = torch.squeeze(pred, 1)
         loss = loss_function(pred, labels.to(device))
         loss.backward()
         accu_loss += loss.detach()
@@ -49,6 +53,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch) -> (float, flo
 
         optimizer.step()
         optimizer.zero_grad()
+
     return accu_loss.item() / (step + 1), accu_num.item() / sample_num
 
 
@@ -66,8 +71,10 @@ def val_one_epoch(model, data_loader, device) -> float:
         class_pred = torch.tensor(torch.sigmoid(pred))
         class_pred[torch.where(class_pred >= 0.37)] = 1
         class_pred[torch.where(class_pred < 0.37)] = 0
+        class_pred = torch.squeeze(class_pred, 1)
 
         val_num += torch.eq(class_pred, labels.to(device)).sum()
+
     return val_num.item() / val_sum
 
 
@@ -136,23 +143,21 @@ class FocalLoss(nn.Module):
         class_mask = Variable(class_mask)
         ids = targets.view(-1, 1)
         class_mask.scatter_(1, ids.data, 1.)
-        #print(class_mask)
-
+        # print(class_mask)
 
         if inputs.is_cuda and not self.alpha.is_cuda:
             self.alpha = self.alpha.cuda()
         alpha = self.alpha[ids.data.view(-1)]
 
-        probs = (P*class_mask).sum(1).view(-1,1)
+        probs = (P * class_mask).sum(1).view(-1, 1)
 
         log_p = probs.log()
-        #print('probs size= {}'.format(probs.size()))
-        #print(probs)
+        # print('probs size= {}'.format(probs.size()))
+        # print(probs)
 
-        batch_loss = -alpha*(torch.pow((1-probs), self.gamma))*log_p
-        #print('-----bacth_loss------')
-        #print(batch_loss)
-
+        batch_loss = -alpha * (torch.pow((1 - probs), self.gamma)) * log_p
+        # print('-----bacth_loss------')
+        # print(batch_loss)
 
         if self.size_average:
             loss = batch_loss.mean()

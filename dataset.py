@@ -54,10 +54,3 @@ class MyData(Dataset):
                 image = self.transform(image)
 
             return image, np.float32(label)
-
-
-if __name__ == '__main__':
-    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-    data = MyData(r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label', is_train=True)
-    data1 = MyData(r'/home/lee/Work/Pycharmprojects/pytorch_resnet/DM_label', is_train=False)
-    print(len(data), len(data1))
