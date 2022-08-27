@@ -19,7 +19,8 @@ def predict(image_path: str, weights: str):
     test_loader = DataLoader(test_data, batch_size=87, shuffle=False)
 
     # net = resnet34(num_classes=1).to(device)
-    net = mlp.linear_base().to(device)
+    net = mlp.linear_tiny().to(device)
+    net.eval()
 
     if os.path.exists(weights):
         net.load_state_dict(torch.load(weights))
@@ -44,4 +45,4 @@ def predict(image_path: str, weights: str):
 
 if __name__ == '__main__':
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-    predict(r'./DM_label', r'E:\Downloads\mlp_4.pt')
+    predict(r'./DM_label', r'E:\Downloads\mlp_1.pt')

@@ -234,3 +234,8 @@ def mobilenet_v3_small(num_classes: int = 1,
     return MobileNetV3(inverted_residual_setting=inverted_residual_setting,
                        last_channel=last_channel,
                        num_classes=num_classes)
+
+
+if __name__ == '__main__':
+    m = mobilenet_v3_small(num_classes=1)
+    print(f'num params: {sum(p.numel() for p in m.parameters())}')

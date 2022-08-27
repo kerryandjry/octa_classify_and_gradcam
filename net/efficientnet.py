@@ -303,3 +303,8 @@ def efficientnetv2_s(num_classes: int = 1):
                            num_classes=num_classes,
                            dropout_rate=0.2)
     return model
+
+
+if __name__ == '__main__':
+    m = efficientnetv2_s(num_classes=1)
+    print(f'num params: {sum(p.numel() for p in m.parameters())}')

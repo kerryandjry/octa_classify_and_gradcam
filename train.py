@@ -19,11 +19,11 @@ transform = transforms.Compose(
 def run(weights, val, data_path, epochs):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     train_set = MyData(data_path, val, transform=transform)
-    train_loader = DataLoader(train_set, batch_size=4, shuffle=True)  # 64 for mobilenet
+    train_loader = DataLoader(train_set, batch_size=2, shuffle=True)  # 64 for mobilenet
     val_set = MyData(data_path, val, transform=transform, is_train=False)
-    val_loader = DataLoader(val_set, batch_size=4, shuffle=True)  # 64 for mobilenet
+    val_loader = DataLoader(val_set, batch_size=2, shuffle=True)  # 64 for mobilenet
     # net = resnet34(num_classes=1).to(device)
-    net = mlp.linear_base().to(device)
+    net = mlp.linear_tiny().to(device)
 
     if os.path.exists(weights):
         net.load_state_dict(torch.load(weights))

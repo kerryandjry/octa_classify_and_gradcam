@@ -14,8 +14,8 @@ def requires_grad(module, requires_grad):
 
 class LinearBlock(nn.Module):
 
-    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, num_tokens=362):
+    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0.2, attn_drop=0.,
+                 drop_path=0.2, act_layer=nn.GELU, norm_layer=nn.LayerNorm, num_tokens=362):
         super().__init__()
 
         # First stage
@@ -78,7 +78,7 @@ class LinearVisionTransformer(nn.Module):
     """
 
     def __init__(self, *, patch_size=16, in_chans=3, num_classes=1, embed_dim=768, depth=12,
-                 num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0.2, attn_drop_rate=0.,
+                 num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0, attn_drop_rate=0.,
                  drop_path_rate=0., norm_layer=nn.LayerNorm,
                  positional_encoding='learned', learned_positional_encoding_size=(14, 14), block_cls=LinearBlock):
         super().__init__()
@@ -192,7 +192,7 @@ if __name__ == '__main__':
 
     # Test
     x = torch.randn(5, 3, 304, 304)
-    m = linear_base()
+    m = linear_tiny()
     out = m(x)
     print('-----')
     print(f'num params: {sum(p.numel() for p in m.parameters())}')
