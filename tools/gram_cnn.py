@@ -25,7 +25,7 @@ def main():
         [transforms.Resize(304), transforms.ToTensor(), transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
     i = 272
     # load image
-    for img_path in pathlib.Path('DM_label/5/').iterdir():
+    for img_path in pathlib.Path('../DM_label/5/').iterdir():
         assert os.path.exists(img_path), "file: '{}' dose not exist.".format(img_path)
         img = Image.open(img_path).convert('RGB')
 

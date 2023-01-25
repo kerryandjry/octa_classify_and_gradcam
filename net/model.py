@@ -546,7 +546,7 @@ if __name__ == '__main__':
     transform = transforms.Compose(
         [transforms.Resize(304), transforms.ToTensor(), transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
     img = Image.open(
-        r'DM_label/2/_419193J_419193J__1256_HD Angio Retina_OS_2018-06-14_09-50-24_M_1957-10-28_Enface-400x400-Superficial_0.png').convert(
+        r'../DM_label/2/_419193J_419193J__1256_HD Angio Retina_OS_2018-06-14_09-50-24_M_1957-10-28_Enface-400x400-Superficial_0.png').convert(
         'RGB')
     img = transform(img)
     img = img.unsqueeze(0)
